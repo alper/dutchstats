@@ -265,12 +265,16 @@
             ep2009data = data;
             
             appendToSelects('Europese Verkiezingen 2009', 'ep2009');
+            
+            dataLoaded();
         });
         
         $.getJSON('GR2010.json', function(data) {
             gr2010data = data;
             
             appendToSelects('Gemeenteraadsverkiezingen 2010', 'gr2010');
+            
+            dataLoaded();
         });
         
         $.getJSON('gem_2008_gn2.geo.json', function(data) {
@@ -334,6 +338,8 @@
             }
             
             gemdata = data;
+            
+            dataLoaded();
         });
         
         proc.init();
@@ -354,6 +360,36 @@
                 $('#legend-gr2010').css('display', 'block');
             } else {
                 $('#legend-gr2010').css('display', 'none');
+            }
+        }
+        
+        function setHash() {
+            window.location.hash = leftValue + ',' + rightValue;
+        }
+        
+        /** 
+         * Called every time a data file is loaded for general purpose stuff.
+         */
+        var dataSourceCounter = 0;
+        function dataLoaded() {
+            dataSourceCounter += 1;
+            
+            if (dataSourceCounter == 3) {
+                // Read the hash from the URL
+                
+                if (window.location.hash.indexOf(',') != -1) {
+                    var parts = window.location.hash.substr(1).split(',');
+                    
+                    if (parts[0]) {
+                        $('#dataselect-left').val(parts[0]);
+                        $('#dataselect-left').change();
+                    }
+                    
+                    if (parts[1]) {
+                        $('#dataselect-right').val(parts[1]);
+                        $('#dataselect-right').change();
+                    }
+                }
             }
         }
         
@@ -386,6 +422,7 @@
             }
             
             showLegend(leftValue, rightValue);
+            setHash();
         });
         
         $('#dataselect-right').change(function() {
@@ -399,6 +436,7 @@
             } 
             
             showLegend(leftValue, rightValue);
+            setHash();
         });
     });
     

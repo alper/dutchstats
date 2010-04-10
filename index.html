@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="jquery-1.2.3.pack.js"></script>
+  <script src="processing-0.6.packed.js"></script>
+  
+  <meta charset="utf-8">
+  
+  <style type="text/css" media="screen">
+    body { font-family: Helvetica, sans-serif; }
+    a { text-decoration: none; }
+    canvas { border: thin solid grey; }
+    
+    .legend {
+        
+    }
+    
+    .legend UL {
+        list-style-type: none;
+    }
+    
+    .legend LI {
+        display: inline;
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-right: 10px;
+        border-right: thin dotted grey;
+        
+        border-left-style: solid;
+        border-left-width: 20px;
+    }
+    
+    .legend LI.header {
+        border-left: none;
+    }
+  </style>
+    
+  <script type="text/javascript" charset="utf-8">
+    // Data with muni shapes and other information
+    var gemdata = null;
+    
+    // Cache with centers for each muni
+    // mapping of centerpoint -> name
+    var centers = {};
+    
+    // Data of election results
+    var ep2009data = null;
+    var gr2010data = null;
+
+
+    var minX = 999999999999.9;
+    var maxX = 0;
+    
+    var minY = 999999999999.9;
+    var maxY = 0;
+    
+    var proc = null;
+    
+    var font = null;
+    
+    var colors = {};
+    
+    var leftValue = "";
+    var rightValue = "";
+    var leftMin = null;
+    var leftMax = null;
+    var rightMin = null;
+    var rightMax = null;
+    
+    $(document).ready(function() {        
+        proc = Processing(document.getElementById('processing'));
+        
+        proc.setup = function() {
+            proc.size(900, 450);
+            
+            font = proc.loadFont("Arial");
+            proc.textFont(font); 
+            proc.textSize(14);
+            
+            proc.smooth();
+            
+            colors["CDA"] = proc.color(254, 119, 12);
+            colors["PvdA"] = proc.color(228, 6, 45);
+            colors["VVD"] = proc.color(13, 29, 111);
+            colors["D66"] = proc.color(254, 254, 0);
+            colors["GroenLinks"] = proc.color(149, 197, 64);
+            colors["SP"] = proc.color(128, 0, 128);
+            colors["PVV"] = proc.color(150, 75, 0);
+            colors["CU-SGP"] = proc.color(125);
+            colors["CU"] = proc.color(175);
+            colors["SGP"] = proc.color(100);
+        }
+        
+        function distance(point1, point2) {
+            return Math.sqrt(Math.pow(point1[0]-point2[0],2)+Math.pow(point1[1]-point2[1],2));
+        }
+        
+        function getFill(side, name) {
+            var value = "";
+            var color = proc.color(255);
+            var min = null;
+            var max = null;
+            
+            if (side == 'left') {
+                value = leftValue;
+                min = leftMin;
+                max = leftMax;
+            } else {
+                value = rightValue;
+                min = rightMin;
+                max = rightMax;
+            }
+            
+            if (value) {
+                if (value=='gr2010' || value=='ep2009') {
+                    if (name == "Bennebroek") name = "Bloemendaal";
+                    else if (name == "Hengelo (O.)") name = "Bronckhorst";
+                    else if (name == "Jacobswoude") name = "Kaag en Braassem";
+                    else if (name == "Alkemade") name = "Kaag en Braassem";
+                }
+            
+                if (value=='gr2010') {
+                    if (gr2010data && gr2010data[name]) {
+                        if (gr2010data[name] in colors) {
+                            return colors[gr2010data[name]];
+                        }
+                    }
+                } else if (value=='ep2009') {
+                    if (ep2009data && ep2009data[name]) {
+                        if (ep2009data[name] in colors) {
+                            return colors[ep2009data[name]];
+                        }
+                    }
+                } else {
+                    // TODO can't this go quicker
+                    for (var feakey in gemdata['features']) {
+                        if (gemdata['features'][feakey]['properties']['GM_NAAM']==name) {
+                            var val = gemdata['features'][feakey]['properties'][value];
+                            return proc.color(proc.map(val, min, max, 255, 0));
+                        }
+                    } 
+                }
+            }
+            
+            return color;
+        }
+        
+        /** 
+         * Draws a polygon with appropriate fill.
+         */
+        function drawPolygon(proc, name, poly) {
+            var points = poly[0];
+            
+            proc.fill(getFill('left', name));
+            
+            // Left
+            proc.beginShape();
+            for (var key in points) {
+                var point = points[key];
+
+                proc.vertex(proc.map(point[0], minX, maxX, 20, 430), 
+                            proc.map(point[1], minY, maxY, 430, 20));
+            }
+            proc.endShape(proc.CLOSE);
+            
+            proc.noFill();
+            
+            
+            proc.fill(getFill('right', name));
+            
+            // Right
+            proc.beginShape();
+            for (var key2 in points) {
+                var point = points[key2];
+
+                proc.vertex(proc.map(point[0], minX, maxX, 470, 880), 
+                            proc.map(point[1], minY, maxY, 430, 20));
+            }
+            proc.endShape(proc.CLOSE);
+            
+            proc.noFill();
+        }
+        
+        proc.draw = function() {
+            proc.background(255);
+            
+            proc.stroke(100);
+            proc.strokeJoin(proc.ROUND);
+            
+            proc.noFill();
+            
+            if (gemdata) {
+                var matches = [];
+                
+                for (var feakey in gemdata['features']) {
+                    if (feakey == 0) continue; // Skip the first
+                    
+                    var name = gemdata['features'][feakey]['properties']['GM_NAAM'];
+                    var coordinates = gemdata['features'][feakey]['geometry']['coordinates'];
+                    
+                    if (gemdata['features'][feakey]['geometry']['type'] == "MultiPolygon") {
+                        for (var cokey in coordinates) {
+                            drawPolygon(proc, name, coordinates[cokey]);
+                        }
+                    } else if (gemdata['features'][feakey]['geometry']['type'] == "Polygon") {
+                        drawPolygon(proc, name, coordinates);
+                    }
+                }               
+            }
+            
+            /*
+            // Double cross hair grid
+            proc.line(0, proc.mouseY, proc.width, proc.mouseY);
+            proc.line(proc.mouseX, 0, proc.mouseX, proc.height);
+            
+            if (proc.mouseX > proc.width/2) {
+                proc.line(proc.mouseX-(proc.width/2), 0, proc.mouseX-(proc.width/2), proc.height);
+            } else {
+                proc.line(proc.mouseX+(proc.width/2), 0, proc.mouseX+(proc.width/2), proc.height);
+            }
+            */
+            
+            // Find closest muni
+            var lowestDistance = 9999999999.9;
+            var muniWithLowest = "";
+            for (var c in centers) {
+                var mouseX = proc.mouseX;
+                
+                if (mouseX > proc.width/2) {
+                    mouseX -= proc.width/2;
+                }
+                
+                var dist = distance([mouseX, proc.mouseY], centers[c]);
+                
+                if (dist < lowestDistance) {
+                    lowestDistance = dist;
+                    muniWithLowest = c;
+                }
+            }
+            
+            proc.fill(0);
+            proc.text(" " + muniWithLowest, 10, 20); 
+            proc.noFill();
+            
+            //if (proc.keyPressed) {
+                // proc.noLoop();
+                //proc.println('stopped loop');
+            //}
+        }
+        
+        $.getJSON('EP2009.json', function(data) {            
+            ep2009data = data;
+            
+            appendToSelects('Europese Verkiezingen 2009', 'ep2009');
+        });
+        
+        $.getJSON('GR2010.json', function(data) {
+            gr2010data = data;
+            
+            appendToSelects('Gemeenteraadsverkiezingen 2010', 'gr2010');
+        });
+        
+        $.getJSON('gem_2008_gn2.geo.json', function(data) {
+            // Find bounds of the coordinates
+            for (var feakey in data['features']) {
+                if (feakey == 0) continue;
+
+                var name = data['features'][feakey]['properties']['GM_NAAM'];
+
+                var xCenter = 0.0;
+                var yCenter = 0.0;
+
+                var points = null;
+                if (data['features'][feakey]['geometry']['type'] == "MultiPolygon") {
+                    points = data['features'][feakey]['geometry']['coordinates'][0][0];
+                } else {
+                    points = data['features'][feakey]['geometry']['coordinates'][0];
+                }
+                
+                for (poikey in points) {
+                    var point = points[poikey];
+                    
+                    if (point[0] > maxX) maxX = point[0];
+                    if (point[0] < minX) minX = point[0];
+                    if (point[1] > maxY) maxY = point[1];
+                    if (point[1] < minY) minY = point[1];
+                    
+                    xCenter += point[0];
+                    yCenter += point[1];
+                }
+                
+                // Put RD values in centers
+                centers[name] = [xCenter/points.length, yCenter/points.length];
+            }
+            
+            var PADDING = 10000;
+            
+            minX -= PADDING;
+            maxX += PADDING;
+            minY -= PADDING;
+            maxY += PADDING;
+            
+            // Now that the ranges are known, remap the centers to screen coordinates (for the left half) for speed
+            for (var c in centers) {
+                var centerPoint = centers[c];
+                centers[c] = [proc.map(centerPoint[0], minX, maxX, 20, 430), 
+                                proc.map(centerPoint[1], minY, maxY, 430, 20)];
+                
+                // proc.println(c + ' ' + centers[c]);
+            }
+            
+            // Add the various data sources to the options
+            var propnames = [['AANT_INW', 'Aantal inwoners'], ['BEV_DICHTH', 'Bevolkingsdichtheid'],
+                            ["P_00_14_JR", 'Personen 0 tot 15 jaar'], ["P_15_24_JR", 'Personen 15 tot 25 jaar'], ["P_25_44_JR", 'Personen 25 tot 45 jaar'], ["P_45_64_JR", 'Personen 45 tot 65 jaar'], ["P_65_EO_JR", 'Personen 65 jaar en ouder'],
+                            ['P_WEST_AL', 'Allochtonen — Westers totaal'], ['P_N_W_AL', 'Allochtonen — Niet-westers totaal'], ['P_TURKIJE', 'Allochtonen — Turkije'], ['P_MAROKKO', 'Allochtonen — Marokko'], ['P_SURINAM', 'Allochtonen — Suriname'], ['P_ANT_ARU', 'Allochtonen — Ned. Antillen en Aruba'], ['P_OVER_NW', 'Allochtonen — Overig niet-westers'],
+                            ['P_EENP_HH', 'Eenpersoonshuishoudens'], ['P_HH_Z_K', 'Huishoudens zonder kinderen'], ['P_HH_M_K', 'Huishoudens met kinderen'], ['GEM_HH_GR', 'Gemiddelde huishoudensgrootte'], ['P_ONGEHUWD', 'Ongehuwd'], ['P_GEHUWD', 'Gehuwd'], ['P_GESCHEID', 'Gescheiden'],
+                            ['AUTO_HH', 'Personenauto’s per huishouden'], ['AUTO_LAND', 'Personenauto’s per oppervlakte'],
+                            ['AGRA_BEDR', 'Aantal agrarische bedrijven']];
+            for(var propkey in propnames) {
+                appendToSelects(propnames[propkey][1], propnames[propkey][0]);
+            }
+            
+            gemdata = data;
+        });
+        
+        proc.init();
+        
+        function appendToSelects(name, value) {
+            $('#dataselect-left').append($("<option></option>").attr("value", value).text(name));
+            $('#dataselect-right').append($("<option></option>").attr("value", value).text(name));
+        }
+        
+        function showLegend(key) {
+            if (key == 'gr2010') {
+                
+            } else if (key == 'ep2009') {
+                
+            } else {
+                // Hide both
+            }
+        }
+        
+        /**
+         * Calculates the [min, max] for a property.
+         */
+        function propertyRange(propname) {
+            var min = 9999999999.9;
+            var max = 0.0;
+            
+            for (var feakey in gemdata['features']) {
+                if (feakey == 0) continue;
+                
+                var value = gemdata['features'][feakey]['properties'][propname];
+                
+                if (value < min) min = value;
+                if (value > max) max = value;
+            }
+            
+            return [min, max];
+        }
+        
+        $('#dataselect-left').change(function() {
+            leftValue = $('#dataselect-left').val();
+            
+            if (leftValue != 'gr2010' && leftValue != 'ep2009') {
+                var minmax = propertyRange(leftValue);
+                leftMin = minmax[0];
+                leftMax = minmax[1];
+            }
+            
+            showLegend(leftValue);
+        });
+        
+        $('#dataselect-right').change(function() {
+            rightValue = $('#dataselect-right').val();
+            
+            if (rightValue != 'gr2010' && rightValue != 'ep2009') {
+                // Calculate max and min for this property
+                var minmax = propertyRange(rightValue);
+                rightMin = minmax[0];
+                rightMax = minmax[1];
+            } 
+            
+            showLegend(rightValue);
+        });
+    });
+    
+  </script>
+  
+</head>
+
+<body>
+
+<select id="dataselect-left" style="float: left; margin-left: 150px;">
+    <option value="">Choose left data source…</option>
+</select>
+
+<select id="dataselect-right" style="float: left; margin-left: 250px;">
+    <option value="">Choose right data source…</option>
+</select>
+
+<br style="clear: both;">
+
+<canvas id="processing" width="800" height="400"></canvas>
+
+colors["CDA"] = proc.color(254, 119, 12);
+colors["PvdA"] = proc.color(228, 6, 45);
+colors["VVD"] = proc.color(13, 29, 111);
+colors["D66"] = proc.color(254, 254, 0);
+colors["GroenLinks"] = proc.color(149, 197, 64);
+colors["SP"] = proc.color(128, 0, 128);
+colors["PVV"] = proc.color(150, 75, 0);
+colors["CU-SGP"] = proc.color(125);
+colors["CU"] = proc.color(175);
+colors["SGP"] = proc.color(100);
+
+<div id="#legend-ep2009" class="legend">
+    <ul>
+        <li class="header">Europese Verkiezingen 2009</li>
+        <li style="border-left-color: rgb(254, 119, 12);">CDA</li>
+        <li style="border-left-color: rgb(228, 6, 45);">PvdA</li>
+        <li style="border-left-color: rgb(254, 254, 0);">D66</li>
+        <li style="border-left-color: rgb(13, 29, 111);">VVD</li>
+        <li style="border-left-color: rgb(149, 197, 64);">GroenLinks</li>
+        <li style="border-left-color: rgb(125, 125, 125);">CU-SGP</li>
+    </ul>
+</div>
+
+<div id="#legend-gr2010" class="legend">
+    <ul>
+        <li class="header">Europese Verkiezingen 2009</li>
+        <li style="border-left-color: rgb(254, 119, 12);">CDA</li>
+        <li style="border-left-color: rgb(228, 6, 45);">PvdA</li>
+        <li style="border-left-color: rgb(254, 254, 0);">D66</li>
+        <li style="border-left-color: rgb(13, 29, 111);">VVD</li>
+        <li style="border-left-color: rgb(149, 197, 64);">GroenLinks</li>
+        <li style="border-left-color: rgb(125, 125, 125);">CU-SGP</li>
+    </ul>
+</div>
+
+
+<div id="#legend-gr2010" class="legend"></div>
+
+<p>Municipal boundaries and stats of 2006 from <a href="http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2007/2006-wijk-en-buurtkaart.htm">Dutch Statistics Office</a>. Newer ones welcome (<a href="http://twitter.com/alper">contact</a>).</p>
+
+<p>Election results for 2009 from <a href="http://nlverkiezingen.com">NL Verkiezingen</a>.</p>
+
+<p><a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons Attribution 3.0 License</a> by <a href="http://alper.nl">Alper Çu&#287;un</a></p>
+
+<p id="log">
+</p>
+</body>
+</html>

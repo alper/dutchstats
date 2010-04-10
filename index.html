@@ -12,18 +12,26 @@
     canvas { border: thin solid grey; }
     
     .legend {
+        font-size: 11pt;
         
+        display: none;
     }
     
     .legend UL {
         list-style-type: none;
+        
+        padding-left: 0;
+        padding-right: 0;
+        
+        margin-left: 0;
+        margin-right: 0;
     }
     
     .legend LI {
         display: inline;
-        padding-left: 10px;
+        padding-left: 5px;
         padding-right: 10px;
-        margin-right: 10px;
+        margin-right: 5px;
         border-right: thin dotted grey;
         
         border-left-style: solid;
@@ -330,13 +338,17 @@
             $('#dataselect-right').append($("<option></option>").attr("value", value).text(name));
         }
         
-        function showLegend(key) {
-            if (key == 'gr2010') {
-                
-            } else if (key == 'ep2009') {
-                
+        function showLegend(lv, rv) {
+            if ('ep2009' == lv || 'ep2009' == rv) {
+                $('#legend-ep2009').css('display', 'block');
             } else {
-                // Hide both
+                $('#legend-ep2009').css('display', 'none');
+            }
+            
+            if ('gr2010' == lv || 'gr2010' == rv) {
+                $('#legend-gr2010').css('display', 'block');
+            } else {
+                $('#legend-gr2010').css('display', 'none');
             }
         }
         
@@ -368,7 +380,7 @@
                 leftMax = minmax[1];
             }
             
-            showLegend(leftValue);
+            showLegend(leftValue, rightValue);
         });
         
         $('#dataselect-right').change(function() {
@@ -381,7 +393,7 @@
                 rightMax = minmax[1];
             } 
             
-            showLegend(rightValue);
+            showLegend(leftValue, rightValue);
         });
     });
     
@@ -392,58 +404,52 @@
 <body>
 
 <select id="dataselect-left" style="float: left; margin-left: 150px;">
-    <option value="">Choose left data source…</option>
+    <option value="">Kies linker gegevensbron…</option>
 </select>
 
 <select id="dataselect-right" style="float: left; margin-left: 250px;">
-    <option value="">Choose right data source…</option>
+    <option value="">Kies rechter gegevensbron…</option>
 </select>
 
 <br style="clear: both;">
 
 <canvas id="processing" width="800" height="400"></canvas>
 
-colors["CDA"] = proc.color(254, 119, 12);
-colors["PvdA"] = proc.color(228, 6, 45);
-colors["VVD"] = proc.color(13, 29, 111);
-colors["D66"] = proc.color(254, 254, 0);
-colors["GroenLinks"] = proc.color(149, 197, 64);
-colors["SP"] = proc.color(128, 0, 128);
-colors["PVV"] = proc.color(150, 75, 0);
-colors["CU-SGP"] = proc.color(125);
-colors["CU"] = proc.color(175);
-colors["SGP"] = proc.color(100);
 
-<div id="#legend-ep2009" class="legend">
+<div id="legend-ep2009" class="legend">
     <ul>
         <li class="header">Europese Verkiezingen 2009</li>
         <li style="border-left-color: rgb(254, 119, 12);">CDA</li>
+        <li style="border-left-color: rgb(150, 75, 0);">PVV</li>
         <li style="border-left-color: rgb(228, 6, 45);">PvdA</li>
         <li style="border-left-color: rgb(254, 254, 0);">D66</li>
         <li style="border-left-color: rgb(13, 29, 111);">VVD</li>
         <li style="border-left-color: rgb(149, 197, 64);">GroenLinks</li>
         <li style="border-left-color: rgb(125, 125, 125);">CU-SGP</li>
+        <li style="border-left-color: rgb(128, 0, 128);">SP</li>
     </ul>
 </div>
 
-<div id="#legend-gr2010" class="legend">
+<div id="legend-gr2010" class="legend">
     <ul>
-        <li class="header">Europese Verkiezingen 2009</li>
+        <li class="header">Gemeenteraadsverkiezingen 2010</li>
         <li style="border-left-color: rgb(254, 119, 12);">CDA</li>
         <li style="border-left-color: rgb(228, 6, 45);">PvdA</li>
-        <li style="border-left-color: rgb(254, 254, 0);">D66</li>
         <li style="border-left-color: rgb(13, 29, 111);">VVD</li>
-        <li style="border-left-color: rgb(149, 197, 64);">GroenLinks</li>
-        <li style="border-left-color: rgb(125, 125, 125);">CU-SGP</li>
+        <li style="border-left-color: rgb(150, 75, 0);">PVV</li>
+        <li style="border-left-color: rgb(254, 254, 0);">D66</li>
+        <li style="border-left-color: rgb(175, 175, 175);">CU</li>
+        <li style="border-left-color: rgb(100, 100, 100);">SGP</li>
+        <li style="border-left-color: rgb(128, 0, 128);">SP</li>
     </ul>
 </div>
 
 
 <div id="#legend-gr2010" class="legend"></div>
 
-<p>Municipal boundaries and stats of 2006 from <a href="http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2007/2006-wijk-en-buurtkaart.htm">Dutch Statistics Office</a>. Newer ones welcome (<a href="http://twitter.com/alper">contact</a>).</p>
+<p style="margin-top: 3em;">Municipal boundaries and stats of 2006 from <a href="http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2007/2006-wijk-en-buurtkaart.htm">Dutch Statistics Office</a>. Newer ones welcome (<a href="http://twitter.com/alper">contact</a>).</p>
 
-<p>Election results for 2009 from <a href="http://nlverkiezingen.com">NL Verkiezingen</a>.</p>
+<p>Election results for 2009 from <a href="http://nlverkiezingen.com">NL Verkiezingen</a>. Election results for 2010 via manual entry.</p>
 
 <p><a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons Attribution 3.0 License</a> by <a href="http://alper.nl">Alper Çu&#287;un</a></p>
 

@@ -75,6 +75,8 @@
     var rightMin = null;
     var rightMax = null;
     
+    var white = null;
+    
     $(document).ready(function() {        
         proc = Processing(document.getElementById('processing'));
         
@@ -97,6 +99,12 @@
             colors["CU-SGP"] = proc.color(125);
             colors["CU"] = proc.color(175);
             colors["SGP"] = proc.color(100);
+            
+            // Cache white
+            white = proc.color(255);
+            
+            proc.stroke(100);
+            proc.strokeJoin(proc.ROUND);
         }
         
         function distance(point1, point2) {
@@ -105,7 +113,7 @@
         
         function getFill(side, name) {
             var value = "";
-            var color = proc.color(255);
+            var color = white;
             var min = null;
             var max = null;
             
@@ -191,9 +199,6 @@
         
         proc.draw = function() {
             proc.background(255);
-            
-            proc.stroke(100);
-            proc.strokeJoin(proc.ROUND);
             
             proc.noFill();
             

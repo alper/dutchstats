@@ -221,18 +221,6 @@
                 }               
             }
             
-            /*
-            // Double cross hair grid
-            proc.line(0, proc.mouseY, proc.width, proc.mouseY);
-            proc.line(proc.mouseX, 0, proc.mouseX, proc.height);
-            
-            if (proc.mouseX > proc.width/2) {
-                proc.line(proc.mouseX-(proc.width/2), 0, proc.mouseX-(proc.width/2), proc.height);
-            } else {
-                proc.line(proc.mouseX+(proc.width/2), 0, proc.mouseX+(proc.width/2), proc.height);
-            }
-            */
-            
             // Find closest muni
             var lowestDistance = 9999999999.9;
             var muniWithLowest = "";
@@ -254,11 +242,6 @@
             proc.fill(0);
             proc.text(" " + muniWithLowest, 10, 20); 
             proc.noFill();
-            
-            //if (proc.keyPressed) {
-                // proc.noLoop();
-                //proc.println('stopped loop');
-            //}
         }
         
         $.getJSON('EP2009.json', function(data) {            

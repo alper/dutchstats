@@ -69,7 +69,6 @@
     var rightMax = null;
     
     var backgroundColor = null;
-    var defaultFill = null;
     
     
     var geosource = null;
@@ -163,6 +162,9 @@
     }
     
     GeometryDrawer.prototype.draw = function(proc) {
+        proc.stroke(100);
+        
+        // Draw geometry
         for (var index in this.geometrysource.geometry['features']) {
             if (index == 0) continue; // Skip the first
             
@@ -172,8 +174,6 @@
             var coordinates = feature['geometry']['coordinates'];
             
             proc.fill(this.datasource.colourFor(name));
-            // TODO implement real fill
-            //proc.fill(defaultFill);
             
             if (feature['geometry']['type'] == "MultiPolygon") {
                 for (var cIndex in coordinates) {
@@ -185,10 +185,41 @@
             
             proc.noFill();
         }
+        
+        // Draw legend for current datasource
+        this.drawLegend(proc);
     }
     
     GeometryDrawer.prototype.setDataKey = function(key) {
         this.datasource.setDataKey(key);
+    }
+    
+    GeometryDrawer.prototype.drawLegend = function(proc) {
+        // TODO this gets called every time in the draw loop
+        // cache this
+        var valueMapping = this.datasource.getValueMapping();
+        
+        // For continuous values, change this to a pre filled list with lables (min
+        //    , max values) and colours for the blocks
+        
+        proc.pushMatrix();
+        
+        proc.noStroke();
+        
+        proc.translate(5, 5);
+        
+        for (var key in valueMapping) {
+            proc.fill(valueMapping[key]);
+            proc.rect(0, 0, 20, 20);
+            
+            proc.fill(0);
+            proc.textSize(11);
+            proc.text("" + key, 22, 12);
+            
+            proc.translate(0, 22);
+        }
+        
+        proc.popMatrix();
     }
     
     
@@ -270,10 +301,28 @@
         }
         
         this.propMinMax[propname] = {'min': min, 'max': max};
+        
+        this.defaultFill = proc.color(255);
+    }
+    
+    DataCatalog.prototype.getValueMapping = function(datakey) {
+        var valueMapping = {};
+        
+        if (datakey in this.electionDataSources) {
+            var source = this.electionDataSources[datakey];
+            
+            for (var key in source) {
+                if (source[key] != "" && source[key] != "-" && !(source[key] in valueMapping)) {
+                    valueMapping[source[key]] = this.partyColours[source[key]];
+                }
+            }
+        }
+        
+        return valueMapping;
     }
     
     DataCatalog.prototype.colourFor = function(datakey, geolabel) {
-        var returnColour = null;
+        var returnColour = this.defaultFill;
         
         if (datakey in this.electionDataSources) {
             // Transform geolabels from old muninames to new ones
@@ -329,7 +378,8 @@
     /** 
      * Provides the value mapping for every label in the source with datalabel
      */
-    DataSource.prototype.returnLegend = function() {
+    DataSource.prototype.getValueMapping = function() {
+        return this.datacatalog.getValueMapping(this.datakey);
     }
     
 
@@ -342,16 +392,14 @@
         proc = Processing(document.getElementById('processing'));
         
         proc.setup = function() {
-            proc.size(940, 450);
+            proc.size(970, 450);
             
             font = proc.loadFont("Arial");
             proc.textFont(font); 
             proc.textSize(14);
             
             backgroundColor = proc.color(205, 218, 221);
-            defaultFill = proc.color(255);
             
-            proc.stroke(100);
             proc.strokeJoin(proc.ROUND);
             
             proc.frameRate(10);
@@ -418,13 +466,8 @@
             geosource = new GeometrySource(data);
             datacatalog = new DataCatalog(geosource);
             
-            
-            geodrawers['left'] = new GeometryDrawer(geosource, new DataSource(datacatalog));
-            geodrawers['left'].setDataKey('P_HH_Z_K');
-            
+            geodrawers['left'] = new GeometryDrawer(geosource, new DataSource(datacatalog));    
             geodrawers['right'] = new GeometryDrawer(geosource, new DataSource(datacatalog));
-            geodrawers['right'].setDataKey('P_HH_M_K');
-            
             
             $.getJSON('EP2009.json', function(data) {            
                 datacatalog.addElectionDataSource('ep2009', data);
@@ -464,18 +507,12 @@
         }
         
         $('#dataselect-left').change(function() {
-            leftValue = $('#dataselect-left').val();
-            
-            geodrawers['left'].setDataKey(leftValue);
-            
+            geodrawers['left'].setDataKey($('#dataselect-left').val());
             setHash();
         });
         
         $('#dataselect-right').change(function() {
-            rightValue = $('#dataselect-right').val();
-            
-            geodrawers['right'].setDataKey(rightValue);
-            
+            geodrawers['right'].setDataKey($('#dataselect-right').val());
             setHash();
         });
     });
@@ -484,18 +521,21 @@
 
 <body>
 
-<select id="dataselect-left" style="float: left; margin-left: 150px;">
-    <option value="">Kies linker gegevensbron…</option>
-</select>
+<h1>Dutchstats</h1>
 
-<select id="dataselect-right" style="float: left; margin-left: 250px;">
-    <option value="">Kies rechter gegevensbron…</option>
-</select>
+<div id="envelope">
+    <select id="dataselect-left">
+        <option value="">Kies linker gegevensbron…</option>
+    </select>
 
-<br style="clear: both;">
+    <select id="dataselect-right">
+        <option value="">Kies rechter gegevensbron…</option>
+    </select>
 
-<canvas id="processing" width="940" height="450"></canvas>
+    <br>
 
+    <canvas id="processing" width="940" height="450"></canvas>
+</div>
 
 <p style="margin-top: 3em;">Municipal boundaries and stats of 2006 from <a href="http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2007/2006-wijk-en-buurtkaart.htm">Dutch Statistics Office</a>. Newer ones welcome (<a href="http://twitter.com/alper">contact</a>).</p>
 

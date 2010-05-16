@@ -163,6 +163,9 @@
         this.datasource = datasource;
         
         this.PADDING = 20000;
+        
+        this.drawFrom = new proc.PVector(0, 0);
+        this.drawTo = null;
     }
     
     GeometryDrawer.prototype.drawPolygon = function (proc, poly) {
@@ -171,8 +174,12 @@
         for (var index in poly[0]) {
             var point = poly[0][index];
 
-            proc.vertex(proc.map(point[0], this.geometrysource.minX-this.PADDING, this.geometrysource.maxX+this.PADDING, 0, proc.height), 
-                        proc.map(point[1], this.geometrysource.minY-this.PADDING, this.geometrysource.maxY+this.PADDING, proc.height, 0));
+            proc.vertex(proc.map(point[0], 
+                            this.geometrysource.minX-this.PADDING, this.geometrysource.maxX+this.PADDING, 
+                            0, proc.height), 
+                        proc.map(point[1], 
+                            this.geometrysource.minY-this.PADDING, this.geometrysource.maxY+this.PADDING, 
+                            proc.height, 0));
         }
         
         proc.endShape(proc.CLOSE);
@@ -209,68 +216,43 @@
         }
     }
     
-    /**
-     * Checks point p for all the centers.
-     */
-    GeometryDrawer.prototype.labelClosestToPoint = function(p) {
-        /*
-        // Find closest muni
-        // TODO change this for a quadtree
-        var lowestDistance = 9999999999.9;
-        var muniWithLowest = "";
-        for (var c in centers) {
-            var mouseX = proc.mouseX;
-            
-            if (mouseX > proc.width/2) {
-                mouseX -= proc.width/2;
-            }
-            
-            var dist = distance([mouseX, proc.mouseY], centers[c]);
-            
-            if (dist < lowestDistance) {
-                lowestDistance = dist;
-                muniWithLowest = c;
-            }
-        }
-        
-        proc.fill(0);
-        proc.text(" " + muniWithLowest, 10, 20); 
-        proc.noFill();
-        */
-        
-        /*
-        // Now that the ranges are known, remap the centers to screen coordinates (for the left half) for speed
-        for (var c in centers) {
-            var centerPoint = centers[c];
-            centers[c] = [proc.map(centerPoint[0], minX, maxX, 20, 430), 
-                            proc.map(centerPoint[1], minY, maxY, 430, 20)];
-            
-            // proc.println(c + ' ' + centers[c]);
-        }
-        */
-    }
-    
     GeometryDrawer.prototype.drawCurrentIcon = function(proc, label) {
         proc.pushMatrix();
         
-        // proc.noStroke();
+        proc.noStroke();
         
         proc.translate(6, 6);
         
-        proc.fill(proc.color(255, 0, 0));
-        proc.rect(0, 0, 20, 20);
+        if (label) {
+            proc.fill(this.datasource.colourFor(label));
+            proc.rect(0, 0, 20, 20);
         
-        proc.fill(72, 73, 75);
-        proc.textSize(10);
-        proc.text("" + label, 24, 13);
+            proc.fill(72, 73, 75);
+            proc.textSize(10);
+            proc.text("" + label, 24, 13);
+        }
         
         proc.popMatrix();
     }
     
-    GeometryDrawer.prototype.draw = function(proc) {        
-        proc.stroke(100);
+    GeometryDrawer.prototype.draw = function(proc) {
+        proc.pushMatrix();
         
-        // Draw geometry
+        // Move everything if necessary
+        if (this.drawFrom) proc.translate(this.drawFrom.x, this.drawFrom.y);
+        // TODO implement scaling for this.drawTo
+        
+        // TODO only have to scan for mouse if it's in this general envelope
+        var mouseBackMap = new proc.PVector(proc.mouseX-this.drawFrom.x, proc.mouseY-this.drawFrom.y);
+        // Map this back to RD coordinates
+        // TODO move functionality mapping from canvas to RD and back to geometrysource
+        mouseBackMap.x = proc.map(mouseBackMap.x, 0, proc.height, this.geometrysource.minX-this.PADDING, this.geometrysource.maxX+this.PADDING);
+        mouseBackMap.y = proc.map(mouseBackMap.y, proc.height, 0, this.geometrysource.minY-this.PADDING, this.geometrysource.maxY+this.PADDING);
+        
+        // Here we'll store the current polygon label (if we have one)
+        var label = "";
+        
+        // TODO highlight drawing of current polygon
         for (var index in this.geometrysource.geometry['features']) {
             if (index == 0) continue; // Skip the first
             
@@ -281,26 +263,44 @@
             
             proc.fill(this.datasource.colourFor(name));
             
+            proc.stroke(100);
+            
             if (feature['geometry']['type'] == "MultiPolygon") {
                 for (var cIndex in coordinates) {
+                    if (this.isPointInPolygon(mouseBackMap, coordinates[cIndex])) {
+                        label = name;
+                        // TODO queue higlighted geometry object to be drawn as last (or other way to control z-index)
+                        proc.stroke(255);
+                    }
+                    
                     this.drawPolygon(proc, coordinates[cIndex]);
                 }
             } else if (feature['geometry']['type'] == "Polygon") {
+                if (this.isPointInPolygon(mouseBackMap, coordinates)) {
+                    label = name;
+                    proc.stroke(255);
+                }
+                
                 this.drawPolygon(proc, coordinates);
             }
             
             proc.noFill();
         }
         
-        // Draw current value based on mouse location
-        // this.drawCurrentIcon(proc, currentLabel);
+        this.drawCurrentIcon(proc, label);
         
         // Draw legend for current datasource
         this.drawLegend(proc);
+        
+        proc.popMatrix();
     }
     
     GeometryDrawer.prototype.setDataKey = function(key) {
         this.datasource.setDataKey(key);
+    }
+    
+    GeometryDrawer.prototype.getDataKey = function() {
+        return this.datasource.getDataKey();
     }
     
     GeometryDrawer.prototype.drawLegend = function(proc) {
@@ -308,15 +308,12 @@
         // cache this
         var valueMapping = this.datasource.getValueMapping();
         
-        // For continuous values, change this to a pre filled list with lables (min
-        //, max values) and colours for the blocks
-        
         proc.pushMatrix();
         
         proc.noStroke();
         
         proc.translate(6, 6);
-        proc.translate(0, 20);
+        proc.translate(0, 20); // Leave gap for current icon
         proc.translate(0, 6);
         
         for (var index in valueMapping) {
@@ -513,6 +510,10 @@
         this.datakey = key;
     }
     
+    DataSource.prototype.getDataKey = function() {
+        return this.datakey;
+    }
+    
     /** 
      * Return the color for the given name.
      */
@@ -525,12 +526,6 @@
      */
     DataSource.prototype.getValueMapping = function() {
         return this.datacatalog.getValueMapping(this.datakey);
-    }
-    
-
-    function appendToSelects(name, value) {
-        $('#dataselect-left').append($("<option></option>").attr("value", value).text(name));
-        $('#dataselect-right').append($("<option></option>").attr("value", value).text(name));
     }
     
     $(document).ready(function() {        
@@ -553,20 +548,8 @@
         proc.draw = function() {
             proc.background(backgroundColor);
             
-            if (geodrawers['left']) {
-                proc.pushMatrix();
-                proc.translate(0, 0);
-                geodrawers['left'].draw(proc);
-                proc.popMatrix();
-            }
-            
-            if (geodrawers['right']) {
-                proc.pushMatrix();
-                
-                // TODO move push,translate, pop into draw code inside
-                proc.translate(proc.width/2, 0);
-                geodrawers['right'].draw(proc);
-                proc.popMatrix();
+            for (var key in geodrawers) {
+                geodrawers[key].draw(proc);
             }
         }
         
@@ -574,9 +557,11 @@
             geosource = new GeometrySource(data);
             datacatalog = new DataCatalog(geosource);
             
-            geodrawers['left'] = new GeometryDrawer(geosource, new DataSource(datacatalog));    
+            geodrawers['left'] = new GeometryDrawer(geosource, new DataSource(datacatalog));
             geodrawers['right'] = new GeometryDrawer(geosource, new DataSource(datacatalog));
+            geodrawers['right'].drawFrom = new proc.PVector(proc.width/2, 0);
             
+            // Load in additional data sources
             $.getJSON('EP2009.json', function(data) {            
                 datacatalog.addElectionDataSource('ep2009', data);
                 appendToSelects('Europese Verkiezingen 2009', 'ep2009');
@@ -590,30 +575,6 @@
         
         proc.init();
         
-        function setHash() {
-            window.location.hash = leftValue + ',' + rightValue;
-        }
-        
-        function readHash() {
-            // TODO implement
-            
-            /*
-            if (window.location.hash.indexOf(',') != -1) {
-                var parts = window.location.hash.substr(1).split(',');
-                
-                if (parts[0]) {
-                    $('#dataselect-left').val(parts[0]);
-                    $('#dataselect-left').change();
-                }
-                
-                if (parts[1]) {
-                    $('#dataselect-right').val(parts[1]);
-                    $('#dataselect-right').change();
-                }
-            }
-            */
-        }
-        
         $('#dataselect-left').change(function() {
             geodrawers['left'].setDataKey($('#dataselect-left').val());
             setHash();
@@ -624,6 +585,37 @@
             setHash();
         });
     });
+    
+    // DOM interface stuff
+    function setHash() {
+        window.location.hash = geodrawers['left'].getDataKey() + ',' + 
+                            geodrawers['right'].getDataKey();
+    }
+    
+    function readHash() {
+        // TODO implement
+        
+        /*
+        if (window.location.hash.indexOf(',') != -1) {
+            var parts = window.location.hash.substr(1).split(',');
+            
+            if (parts[0]) {
+                $('#dataselect-left').val(parts[0]);
+                $('#dataselect-left').change();
+            }
+            
+            if (parts[1]) {
+                $('#dataselect-right').val(parts[1]);
+                $('#dataselect-right').change();
+            }
+        }
+        */
+    }
+    
+    function appendToSelects(name, value) {
+        $('#dataselect-left').append($("<option></option>").attr("value", value).text(name));
+        $('#dataselect-right').append($("<option></option>").attr("value", value).text(name));
+    }
   </script>
 </head>
 

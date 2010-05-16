@@ -7,39 +7,54 @@
   <meta charset="utf-8">
   
   <style type="text/css" media="screen">
-    body { font-family: Helvetica, sans-serif; }
-    a { text-decoration: none; }
-    canvas { border: thin solid grey; }
-    
-    .legend {
-        font-size: 11pt;
-        
-        display: none;
+    body {
+        font-family: Helvetica, sans-serif;
+        background-color: #e6e7e7;
     }
     
-    .legend UL {
-        list-style-type: none;
-        
-        padding-left: 0;
-        padding-right: 0;
-        
-        margin-left: 0;
-        margin-right: 0;
+    H1 {
+        margin: 0;
+        margin-top: 1em;
+        margin-left: 7px;
+        padding: 0;
+    }
+
+    canvas { }
+    
+    #envelope { 
+        margin: auto;
+        width: 975px;
     }
     
-    .legend LI {
-        display: inline;
-        padding-left: 5px;
-        padding-right: 10px;
-        margin-right: 5px;
-        border-right: thin dotted grey;
+    #header {
+        background-color: #808385;
+        width: 966px;
+        padding: 2px;
         
-        border-left-style: solid;
-        border-left-width: 20px;
+        margin-bottom: 4px;
     }
     
-    .legend LI.header {
-        border-left: none;
+    #dataselect-left {
+        position: relative;
+        left: 6px;
+    }
+    
+    #dataselect-right {
+        position: relative;
+        margin-left: 244px;
+    }
+    
+    #footer {
+        width: 956px;
+        background-color: #808385;
+        color: white;
+        padding: 7px;
+        text-align: center;
+        font-size: 11px;
+    }
+    
+    #footer A {
+        color: white;
     }
   </style>
     
@@ -106,7 +121,7 @@
     }
     
     /**
-     * Calculates min max values for the current geometry.
+     * Calculates min max values and centers for the current geometry.
      */
     GeometrySource.prototype.calculateAllMinMax = function() {
         for (var index in this.geometry['features']) {
@@ -114,7 +129,7 @@
 
             var name = this.geometry['features'][index]['properties']['GM_NAAM'];
 
-            var center = new proc.PVector(0, 0);
+            var centerSum = new proc.PVector(0, 0);
 
             var geom = this.geometry['features'][index]['geometry'];
             var points = null;
@@ -132,11 +147,11 @@
                 if (point[1] > this.maxY) this.maxY = point[1];
                 if (point[1] < this.minY) this.minY = point[1];
                 
-                center.add(new proc.PVector(point[0], point[1]));
+                centerSum.add(new proc.PVector(point[0], point[1]));
             }
             
-            // Put RD values in centers
-            this.centers[name] = new proc.PVector(center.x/points.length, center.y/points.length);
+            // Put average RD value in centers
+            this.centers[name] = new proc.PVector(centerSum.x/points.length, centerSum.y/points.length);
         }
     }
     
@@ -152,16 +167,107 @@
     
     GeometryDrawer.prototype.drawPolygon = function (proc, poly) {
         proc.beginShape();
+        
         for (var index in poly[0]) {
             var point = poly[0][index];
 
             proc.vertex(proc.map(point[0], this.geometrysource.minX-this.PADDING, this.geometrysource.maxX+this.PADDING, 0, proc.height), 
                         proc.map(point[1], this.geometrysource.minY-this.PADDING, this.geometrysource.maxY+this.PADDING, proc.height, 0));
         }
+        
         proc.endShape(proc.CLOSE);
     }
     
-    GeometryDrawer.prototype.draw = function(proc) {
+    GeometryDrawer.prototype.isPointInPolygon = function(p, polygon) {
+        // Implementation of point in polygon algorithm
+        // http://local.wasp.uwa.edu.au/~pbourke/geometry/insidepoly/
+        var counter = 0;
+        
+        var p1 = new proc.PVector(polygon[0][0][0], polygon[0][0][1]);
+        for (var i = 1; i <= polygon[0].length; i++) {
+            var p2 = new proc.PVector(polygon[0][i % polygon[0].length][0], polygon[0][i % polygon[0].length][1]);
+            
+            if (p.y > proc.min(p1.y, p2.y)) {
+                if (p.y <= proc.max(p1.y, p2.y)) {
+                    if (p.x <= proc.max(p1.x, p2.x)) {
+                        if (p1.y != p2.y) {
+                            var xintersect = (p.y-p1.y) * (p2.x-p1.x) / (p2.y-p1.y) + p1.x;
+                            if (p1.x == p2.x || p.x <= xintersect) {
+                                counter += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            p1 = p2;
+        }
+        
+        if (counter%2 == 0) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+    
+    /**
+     * Checks point p for all the centers.
+     */
+    GeometryDrawer.prototype.labelClosestToPoint = function(p) {
+        /*
+        // Find closest muni
+        // TODO change this for a quadtree
+        var lowestDistance = 9999999999.9;
+        var muniWithLowest = "";
+        for (var c in centers) {
+            var mouseX = proc.mouseX;
+            
+            if (mouseX > proc.width/2) {
+                mouseX -= proc.width/2;
+            }
+            
+            var dist = distance([mouseX, proc.mouseY], centers[c]);
+            
+            if (dist < lowestDistance) {
+                lowestDistance = dist;
+                muniWithLowest = c;
+            }
+        }
+        
+        proc.fill(0);
+        proc.text(" " + muniWithLowest, 10, 20); 
+        proc.noFill();
+        */
+        
+        /*
+        // Now that the ranges are known, remap the centers to screen coordinates (for the left half) for speed
+        for (var c in centers) {
+            var centerPoint = centers[c];
+            centers[c] = [proc.map(centerPoint[0], minX, maxX, 20, 430), 
+                            proc.map(centerPoint[1], minY, maxY, 430, 20)];
+            
+            // proc.println(c + ' ' + centers[c]);
+        }
+        */
+    }
+    
+    GeometryDrawer.prototype.drawCurrentIcon = function(proc, label) {
+        proc.pushMatrix();
+        
+        // proc.noStroke();
+        
+        proc.translate(6, 6);
+        
+        proc.fill(proc.color(255, 0, 0));
+        proc.rect(0, 0, 20, 20);
+        
+        proc.fill(72, 73, 75);
+        proc.textSize(10);
+        proc.text("" + label, 24, 13);
+        
+        proc.popMatrix();
+    }
+    
+    GeometryDrawer.prototype.draw = function(proc) {        
         proc.stroke(100);
         
         // Draw geometry
@@ -186,6 +292,9 @@
             proc.noFill();
         }
         
+        // Draw current value based on mouse location
+        // this.drawCurrentIcon(proc, currentLabel);
+        
         // Draw legend for current datasource
         this.drawLegend(proc);
     }
@@ -200,23 +309,25 @@
         var valueMapping = this.datasource.getValueMapping();
         
         // For continuous values, change this to a pre filled list with lables (min
-        //    , max values) and colours for the blocks
+        //, max values) and colours for the blocks
         
         proc.pushMatrix();
         
         proc.noStroke();
         
-        proc.translate(5, 5);
+        proc.translate(6, 6);
+        proc.translate(0, 20);
+        proc.translate(0, 6);
         
-        for (var key in valueMapping) {
-            proc.fill(valueMapping[key]);
+        for (var index in valueMapping) {
+            proc.fill(valueMapping[index][1]);
             proc.rect(0, 0, 20, 20);
             
-            proc.fill(0);
-            proc.textSize(11);
-            proc.text("" + key, 22, 12);
+            proc.fill(72, 73, 75);
+            proc.textSize(10);
+            proc.text("" + valueMapping[index][0], 24, 13);
             
-            proc.translate(0, 22);
+            proc.translate(0, 20);
         }
         
         proc.popMatrix();
@@ -306,15 +417,48 @@
     }
     
     DataCatalog.prototype.getValueMapping = function(datakey) {
-        var valueMapping = {};
+        var valueMapping = [];
+        
+        // Temporary function because JavaScript iteration tools are lame
+        function isPartyInValueMapping(party, valmap) {
+            for (var index in valmap) {
+                if (party == valmap[index][0]) {
+                    return true;
+                }
+            }
+            return false;
+        }
         
         if (datakey in this.electionDataSources) {
             var source = this.electionDataSources[datakey];
             
             for (var key in source) {
-                if (source[key] != "" && source[key] != "-" && !(source[key] in valueMapping)) {
-                    valueMapping[source[key]] = this.partyColours[source[key]];
+                if (source[key] != "" &&
+                    source[key] != "-" &&
+                    !isPartyInValueMapping(source[key], valueMapping)) {
+                    valueMapping.push([source[key], this.partyColours[source[key]]]);
                 }
+            }
+        } else if (datakey in this.featurepropnames) {            
+            var min = this.propMinMax[datakey]['min'];
+            var max = this.propMinMax[datakey]['max'];
+            
+            var steps = 5;
+            
+            for (var counter=0; counter < steps; counter++) {
+                var label = "";
+                
+                if (counter == 0) {
+                    // First
+                    label += max;
+                } else if (counter == steps-1) {
+                    label += min;
+                }
+                
+                // Push step colors 
+                var color = proc.color(proc.map(max - (counter * (max-min) / (steps-1)), min, max, 255, 0));
+                
+                valueMapping.push([label, color]);
             }
         }
         
@@ -353,8 +497,9 @@
     }
     
     /**
-     * DataSource is set for a specific data value and maintains that setting for each 
-     * geometry drawing object it is attached to.
+     * DataSource is set for a specific datakey (value to identify the set of
+     * data to display) and maintains that setting for each geometry drawing
+     * object it is attached to.
      * 
      * The real data is contained in the DataCatalog.
      */
@@ -398,7 +543,7 @@
             proc.textFont(font); 
             proc.textSize(14);
             
-            backgroundColor = proc.color(205, 218, 221);
+            backgroundColor = proc.color(205, 217, 221);
             
             proc.strokeJoin(proc.ROUND);
             
@@ -417,52 +562,15 @@
             
             if (geodrawers['right']) {
                 proc.pushMatrix();
+                
+                // TODO move push,translate, pop into draw code inside
                 proc.translate(proc.width/2, 0);
                 geodrawers['right'].draw(proc);
                 proc.popMatrix();
             }
-            
-            /*
-            // Find closest muni
-            // TODO change this for a quadtree
-            var lowestDistance = 9999999999.9;
-            var muniWithLowest = "";
-            for (var c in centers) {
-                var mouseX = proc.mouseX;
-                
-                if (mouseX > proc.width/2) {
-                    mouseX -= proc.width/2;
-                }
-                
-                var dist = distance([mouseX, proc.mouseY], centers[c]);
-                
-                if (dist < lowestDistance) {
-                    lowestDistance = dist;
-                    muniWithLowest = c;
-                }
-            }
-            
-            proc.fill(0);
-            proc.text(" " + muniWithLowest, 10, 20); 
-            proc.noFill();
-            */
         }
         
-        $.getJSON('gem_2008_gn2.geo.json', function(data) {
-            
-            
-            /*
-            
-            // Now that the ranges are known, remap the centers to screen coordinates (for the left half) for speed
-            for (var c in centers) {
-                var centerPoint = centers[c];
-                centers[c] = [proc.map(centerPoint[0], minX, maxX, 20, 430), 
-                                proc.map(centerPoint[1], minY, maxY, 430, 20)];
-                
-                // proc.println(c + ' ' + centers[c]);
-            }
-            */
-            
+        $.getJSON('gem_2008_gn2.geo.json', function(data) {            
             geosource = new GeometrySource(data);
             datacatalog = new DataCatalog(geosource);
             
@@ -521,29 +629,26 @@
 
 <body>
 
-<h1>Dutchstats</h1>
-
 <div id="envelope">
-    <select id="dataselect-left">
-        <option value="">Kies linker gegevensbron…</option>
-    </select>
+    <h1><img src="dutchstats_header.png" alt="Dutchstats"></h1>
+    
+    <div id="header">
+        <select id="dataselect-left">
+            <option value="">Kies linker gegevensbron…</option>
+        </select>
 
-    <select id="dataselect-right">
-        <option value="">Kies rechter gegevensbron…</option>
-    </select>
-
-    <br>
+        <select id="dataselect-right">
+            <option value="">Kies rechter gegevensbron…</option>
+        </select>
+    </div>
 
     <canvas id="processing" width="940" height="450"></canvas>
+    
+    <div id="footer">
+        Municipal information for 2006 from <a href="http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2007/2006-wijk-en-buurtkaart.htm">Dutch Statistics Office</a>. Newer ones welcome (<a href="http://twitter.com/alper">contact</a>)!<br>
+        Code by <a href="http://alper.nl">Alper Çuğun</a>, Visuals by <a href="">Alexander Zeh</a>. <a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons Attribution 3.0 License</a>.
+    </div>
 </div>
 
-<p style="margin-top: 3em;">Municipal boundaries and stats of 2006 from <a href="http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2007/2006-wijk-en-buurtkaart.htm">Dutch Statistics Office</a>. Newer ones welcome (<a href="http://twitter.com/alper">contact</a>).</p>
-
-<p>Election results for 2009 from <a href="http://nlverkiezingen.com">NL Verkiezingen</a>. Election results for 2010 via manual entry.</p>
-
-<p><a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons Attribution 3.0 License</a> by <a href="http://alper.nl">Alper Çu&#287;un</a></p>
-
-<p id="log">
-</p>
 </body>
 </html>

@@ -50,7 +50,7 @@
         color: white;
         padding: 7px;
         text-align: center;
-        font-size: 11px;
+        font-size: 10px;
     }
     
     #footer A {
@@ -59,32 +59,11 @@
   </style>
     
   <script type="text/javascript" charset="utf-8">
-    // Data with muni shapes and other information
-    // var gemdata = null;
-    
-    // Cache with centers for each muni
-    // mapping of centerpoint -> name
-    // var centers = {};
-    
-    // Data of election results
-    var ep2009data = null;
-    var gr2010data = null;
-    
     var proc = null;
     
     var font = null;
     
-    var colors = {};
-    
-    var leftValue = "";
-    var rightValue = "";
-    var leftMin = null;
-    var leftMax = null;
-    var rightMin = null;
-    var rightMax = null;
-    
     var backgroundColor = null;
-    
     
     var geosource = null;
     var datacatalog = null
@@ -108,11 +87,9 @@
         
         // Initialize min max values for geometry
         // TODO replace these with PVectors
-        this.minX = 999999999999.9;
-        this.maxX = 0;
-
-        this.minY = 999999999999.9;
-        this.maxY = 0;
+        
+        this.min = new proc.PVector(999999999999.9, 999999999999.9);
+        this.max = new proc.PVector(0, 0);
         
         // A mapping of label -> PVector of centers for each geometry
         this.centers = {}
@@ -142,10 +119,10 @@
             for (pIndex in points) {
                 var point = points[pIndex];
                 
-                if (point[0] > this.maxX) this.maxX = point[0];
-                if (point[0] < this.minX) this.minX = point[0];
-                if (point[1] > this.maxY) this.maxY = point[1];
-                if (point[1] < this.minY) this.minY = point[1];
+                if (point[0] > this.max.x) this.max.x = point[0];
+                if (point[0] < this.min.x) this.min.x = point[0];
+                if (point[1] > this.max.y) this.max.y = point[1];
+                if (point[1] < this.min.y) this.min.y = point[1];
                 
                 centerSum.add(new proc.PVector(point[0], point[1]));
             }
@@ -175,10 +152,10 @@
             var point = poly[0][index];
 
             proc.vertex(proc.map(point[0], 
-                            this.geometrysource.minX-this.PADDING, this.geometrysource.maxX+this.PADDING, 
-                            0, proc.height), 
-                        proc.map(point[1], 
-                            this.geometrysource.minY-this.PADDING, this.geometrysource.maxY+this.PADDING, 
+                            this.geometrysource.min.x-this.PADDING, this.geometrysource.max.x+this.PADDING,
+                            0, proc.height),
+                        proc.map(point[1],
+                            this.geometrysource.min.y-this.PADDING, this.geometrysource.max.y+this.PADDING,
                             proc.height, 0));
         }
         
@@ -246,13 +223,12 @@
         var mouseBackMap = new proc.PVector(proc.mouseX-this.drawFrom.x, proc.mouseY-this.drawFrom.y);
         // Map this back to RD coordinates
         // TODO move functionality mapping from canvas to RD and back to geometrysource
-        mouseBackMap.x = proc.map(mouseBackMap.x, 0, proc.height, this.geometrysource.minX-this.PADDING, this.geometrysource.maxX+this.PADDING);
-        mouseBackMap.y = proc.map(mouseBackMap.y, proc.height, 0, this.geometrysource.minY-this.PADDING, this.geometrysource.maxY+this.PADDING);
+        mouseBackMap.x = proc.map(mouseBackMap.x, 0, proc.height, this.geometrysource.min.x-this.PADDING, this.geometrysource.max.x+this.PADDING);
+        mouseBackMap.y = proc.map(mouseBackMap.y, proc.height, 0, this.geometrysource.min.y-this.PADDING, this.geometrysource.max.y+this.PADDING);
         
         // Here we'll store the current polygon label (if we have one)
         var label = "";
         
-        // TODO highlight drawing of current polygon
         for (var index in this.geometrysource.geometry['features']) {
             if (index == 0) continue; // Skip the first
             
@@ -584,6 +560,8 @@
             geodrawers['right'].setDataKey($('#dataselect-right').val());
             setHash();
         });
+        
+        readHash();
     });
     
     // DOM interface stuff
@@ -593,23 +571,34 @@
     }
     
     function readHash() {
-        // TODO implement
-        
-        /*
         if (window.location.hash.indexOf(',') != -1) {
+            var setAll = true;
+            
             var parts = window.location.hash.substr(1).split(',');
             
             if (parts[0]) {
-                $('#dataselect-left').val(parts[0]);
-                $('#dataselect-left').change();
+                if ($('#dataselect-left option[value=' + parts[0] + ']').size() > 0) {
+                    $('#dataselect-left').val(parts[0]);
+                    $('#dataselect-left').change();
+                } else {
+                    setAll = false;
+                }
             }
             
             if (parts[1]) {
-                $('#dataselect-right').val(parts[1]);
-                $('#dataselect-right').change();
+                if ($('#dataselect-right option[value=' + parts[1] + ']').size() > 0) {
+                    $('#dataselect-right').val(parts[1]);
+                    $('#dataselect-right').change();
+                } else {
+                    setAll = false;
+                }
+            }
+            
+            if (!setAll) {
+                // Try again in a bit
+                setTimeout("readHash();", 1000);
             }
         }
-        */
     }
     
     function appendToSelects(name, value) {

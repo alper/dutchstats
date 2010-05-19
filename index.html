@@ -263,30 +263,35 @@
         
         // Names of the properties for each feature we are interested in
         this.featurepropnames = {
+                            'STED': 'Stedelijkheid',
                             'AANT_INW': 'Aantal inwoners',
                             'BEV_DICHTH': 'Bevolkingsdichtheid',
-                            "P_00_14_JR": 'Personen 0 tot 15 jaar',
-                            "P_15_24_JR": 'Personen 15 tot 25 jaar',
-                            "P_25_44_JR": 'Personen 25 tot 45 jaar',
-                            "P_45_64_JR": 'Personen 45 tot 65 jaar',
-                            "P_65_EO_JR": 'Personen 65 jaar en ouder',
-                            'P_WEST_AL': 'Allochtonen — Westers totaal',
-                            'P_N_W_AL': 'Allochtonen — Niet-westers totaal',
-                            'P_TURKIJE': 'Allochtonen — Turkije',
-                            'P_MAROKKO': 'Allochtonen — Marokko',
-                            'P_SURINAM': 'Allochtonen — Suriname',
-                            'P_ANT_ARU': 'Allochtonen — Ned. Antillen en Aruba',
-                            'P_OVER_NW': 'Allochtonen — Overig niet-westers',
-                            'P_EENP_HH': 'Eenpersoonshuishoudens',
-                            'P_HH_Z_K': 'Huishoudens zonder kinderen',
-                            'P_HH_M_K': 'Huishoudens met kinderen',
+                            "P_00_14_JR": 'Personen 0 tot 15 jaar (%)',
+                            "P_15_24_JR": 'Personen 15 tot 25 jaar (%)',
+                            "P_25_44_JR": 'Personen 25 tot 45 jaar (%)',
+                            "P_45_64_JR": 'Personen 45 tot 65 jaar (%)',
+                            "P_65_EO_JR": 'Personen 65 jaar en ouder (%)',
+                            'P_WEST_AL': 'Allochtonen — Westers totaal (%)',
+                            'P_N_W_AL': 'Allochtonen — Niet-westers totaal (%)',
+                            'P_TURKIJE': 'Allochtonen — Turkije (%)',
+                            'P_MAROKKO': 'Allochtonen — Marokko (%)',
+                            'P_SURINAM': 'Allochtonen — Suriname (%)',
+                            'P_ANT_ARU': 'Allochtonen — Ned. Antillen en Aruba (%)',
+                            'P_OVER_NW': 'Allochtonen — Overig niet-westers (%)',
+                            'P_EENP_HH': 'Eenpersoonshuishoudens (%)',
+                            'P_HH_Z_K': 'Huishoudens zonder kinderen (%)',
+                            'P_HH_M_K': 'Huishoudens met kinderen (%)',
                             'GEM_HH_GR': 'Gemiddelde huishoudensgrootte',
-                            'P_ONGEHUWD': 'Ongehuwd',
-                            'P_GEHUWD': 'Gehuwd',
-                            'P_GESCHEID': 'Gescheiden',
+                            'P_ONGEHUWD': 'Ongehuwd (%)',
+                            'P_GEHUWD': 'Gehuwd (%)',
+                            'P_GESCHEID': 'Gescheiden (%)',
+                            'P_VERWEDUW': 'Verweduwd (%)',
                             'AUTO_HH': 'Personenauto’s per huishouden',
                             'AUTO_LAND': 'Personenauto’s per oppervlakte',
-                            'AGRA_BEDR': 'Aantal agrarische bedrijven'
+                            'AGRA_BEDR': 'Aantal agrarische bedrijven',
+                            'P_GEWASSEN': 'Gewassenbedrijven (%)',
+                            'P_VEETEELT': 'Veelteeltbedrijven (%)',
+                            'P_COMBI': 'Combinatiebedrijven (%)'
                         };
 
         for(var propkey in this.featurepropnames) {
@@ -330,8 +335,11 @@
             
             var value = this.geometrysource.geometry['features'][index]['properties'][propname];
             
-            if (value < min) min = value;
-            if (value > max) max = value;
+            if (value >= -1000) {
+                // There are some bogus negative values in there, that don't really belong there
+                if (value < min) min = value;
+                if (value > max) max = value;
+            }
         }
         
         this.propMinMax[propname] = {'min': min, 'max': max};

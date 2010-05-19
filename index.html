@@ -165,19 +165,21 @@
     GeometryDrawer.prototype.draw = function(proc) {
         proc.pushMatrix();
         
-        // Move everything if necessary
+        // Move everything if this.drawFrom is set
         if (this.drawFrom) proc.translate(this.drawFrom.x, this.drawFrom.y);
         // TODO implement scaling for this.drawTo
         
         // TODO only have to scan for mouse if it's in this general envelope
         var mouseBackMap = new proc.PVector(proc.mouseX-this.drawFrom.x, proc.mouseY-this.drawFrom.y);
         // Map this back to RD coordinates
-        // TODO move functionality mapping from canvas to RD and back to geometrysource
+        // TODO move functionality mapping from canvas to RD and back to GeometrySource
         mouseBackMap.x = proc.map(mouseBackMap.x, 0, proc.height, this.geometrysource.min.x-this.PADDING, this.geometrysource.max.x+this.PADDING);
         mouseBackMap.y = proc.map(mouseBackMap.y, proc.height, 0, this.geometrysource.min.y-this.PADDING, this.geometrysource.max.y+this.PADDING);
         
         // Here we'll store the current polygon label (if we have one)
         var label = "";
+        var polygonToHighlight = null;
+        var colorForHighlightPolygon = null;
         
         for (var index in this.geometrysource.geometry['features']) {
             if (index == 0) continue; // Skip the first
@@ -195,8 +197,10 @@
                 for (var cIndex in coordinates) {
                     if (this.isPointInPolygon(mouseBackMap, coordinates[cIndex])) {
                         label = name;
-                        // TODO queue higlighted geometry object to be drawn as last (or other way to control z-index)
-                        proc.stroke(255);
+                        // Queue highligted geometry to be drawn as last
+                        polygonToHighlight = coordinates[cIndex];
+                        colorForHighlightPolygon = this.datasource.colourFor(name);
+                        continue;
                     }
                     
                     this.drawPolygon(proc, coordinates[cIndex]);
@@ -204,13 +208,23 @@
             } else if (feature['geometry']['type'] == "Polygon") {
                 if (this.isPointInPolygon(mouseBackMap, coordinates)) {
                     label = name;
-                    proc.stroke(255);
+                    // Queue highligted geometry to be drawn as last
+                    polygonToHighlight = coordinates;
+                    colorForHighlightPolygon = this.datasource.colourFor(name);
+                    continue;
                 }
                 
                 this.drawPolygon(proc, coordinates);
             }
             
             proc.noFill();
+        }
+        
+        // Draw the highlighted polygon
+        if (polygonToHighlight) {
+            proc.stroke(200);
+            proc.fill(colorForHighlightPolygon);
+            this.drawPolygon(proc, polygonToHighlight);
         }
         
         this.drawCurrentIcon(proc, label);
@@ -438,6 +452,9 @@
         this.datacatalog = datacatalog;
         
         this.datakey = "";
+        
+        // Cache to store valuemapping results
+        this.valueMappingCache = {};
     }
     
     DataSource.prototype.setDataKey = function(key) {
@@ -459,7 +476,13 @@
      * Provides the value mapping for every label in the source with datalabel
      */
     DataSource.prototype.getValueMapping = function() {
-        return this.datacatalog.getValueMapping(this.datakey);
+        if (this.datakey in this.valueMappingCache) {
+        } else {
+            this.valueMappingCache[this.datakey] = this.datacatalog.getValueMapping(this.datakey);
+        }
+        
+        return this.valueMappingCache[this.datakey];
+        // return this.datacatalog.getValueMapping(this.datakey);
     }
     
     $(document).ready(function() {        

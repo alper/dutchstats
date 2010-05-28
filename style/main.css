@@ -12,6 +12,14 @@ H1 {
 
 canvas { }
 
+#iewarning {
+    display: none;
+    
+    border: thick dashed red;
+    background-color: yellow;
+    font-size: 48px;
+}
+
 #envelope { 
     margin: auto;
     width: 975px;

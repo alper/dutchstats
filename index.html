@@ -1,10 +1,30 @@
 <!DOCTYPE html>
+<!--
+    Dutchstat
+    
+    Statistical tool to visualize elections results and statistics for municipalities in the Netherlands.
+    
+    Alper Cugun
+    Alexander Zeh
+    
+    License:
+    Creative Commons Attribution 3.0
+    http://creativecommons.org/licenses/by/3.0/
+-->
 <html>
 <head>
   <script src="script/jquery-1.2.3.pack.js"></script>
   <script src="script/processing-0.6.packed.js"></script>
   
   <link rel="stylesheet" href="style/main.css" type="text/css" media="screen">
+  
+  <!--[if lt IE 9]>
+  <style type="text/css" media="screen">
+    #iewarning {
+        display: block;
+    }
+  </style>
+  <![endif]-->
   
   <meta charset="utf-8">
     
@@ -618,6 +638,10 @@
 </head>
 
 <body>
+
+<div id="iewarning">
+    Dutchstat unfortunately only works in Internet Explorer 9. Please upgrade to that version (if available) or download <a href="http://www.google.com/chrome/">Google Chrome</a>.
+</div>
 
 <div id="envelope">
     <h1><img src="dutchstats_header.png" alt="Dutchstats"></h1>

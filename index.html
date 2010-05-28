@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="jquery-1.2.3.pack.js"></script>
-  <script src="processing-0.6.packed.js"></script>
+  <script src="script/jquery-1.2.3.pack.js"></script>
+  <script src="script/processing-0.6.packed.js"></script>
   
-  <link rel="stylesheet" href="main.css" type="text/css" media="screen">
+  <link rel="stylesheet" href="style/main.css" type="text/css" media="screen">
   
   <meta charset="utf-8">
     
@@ -326,7 +326,8 @@
                     "PVV": proc.color(150, 75, 0),
                     "CU-SGP": proc.color(125),
                     "CU": proc.color(175),
-                    "SGP": proc.color(100)
+                    "SGP": proc.color(100),
+                    "LPF": proc.color(175, 100, 0)
                 }
         
         // Election data sources are mappings of label name to majority political party
@@ -510,7 +511,7 @@
             }
         }
         
-        $.getJSON('gem_2008_gn2.geo.json', function(data) {            
+        $.getJSON('data/gem_2008_gn2.geo.json', function(data) {            
             geosource = new GeometrySource(data);
             datacatalog = new DataCatalog(geosource);
             
@@ -519,14 +520,39 @@
             geodrawers['right'].drawFrom = new proc.PVector(proc.width/2, 0);
             
             // Load in additional data sources
-            $.getJSON('EP2009.json', function(data) {            
+            $.getJSON('data/EP2009.json', function(data) {            
                 datacatalog.addElectionDataSource('ep2009', data);
                 appendToSelects('Europese Verkiezingen 2009', 'ep2009');
             });
 
-            $.getJSON('GR2010.json', function(data) {
+            $.getJSON('data/GR2010.json', function(data) {
                 datacatalog.addElectionDataSource('gr2010', data);
                 appendToSelects('Gemeenteraadsverkiezingen 2010', 'gr2010');
+            });
+            
+            $.getJSON('data/TK1994.json', function(data) {
+                datacatalog.addElectionDataSource('tk1994', data);
+                appendToSelects('Tweede Kamerverkiezingen 1994', 'tk1994');
+            });
+            
+            $.getJSON('data/TK1998.json', function(data) {
+                datacatalog.addElectionDataSource('tk1998', data);
+                appendToSelects('Tweede Kamerverkiezingen 1998', 'tk1998');
+            });
+            
+            $.getJSON('data/TK2002.json', function(data) {
+                datacatalog.addElectionDataSource('tk2002', data);
+                appendToSelects('Tweede Kamerverkiezingen 2002', 'tk2002');
+            });
+            
+            $.getJSON('data/TK2003.json', function(data) {
+                datacatalog.addElectionDataSource('tk2003', data);
+                appendToSelects('Tweede Kamerverkiezingen 2003', 'tk2003');
+            });
+            
+            $.getJSON('data/TK2006.json', function(data) {
+                datacatalog.addElectionDataSource('tk2006', data);
+                appendToSelects('Tweede Kamerverkiezingen 2006', 'tk2006');
             });
         });
         

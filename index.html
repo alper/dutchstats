@@ -178,6 +178,7 @@
         
         // Here we'll store the current polygon label (if we have one)
         var label = "";
+        // Also store the polygon to highlight, to draw last
         var polygonToHighlight = null;
         var colorForHighlightPolygon = null;
         
@@ -327,7 +328,8 @@
                     "CU-SGP": proc.color(125),
                     "CU": proc.color(175),
                     "SGP": proc.color(100),
-                    "LPF": proc.color(175, 100, 0)
+                    "LPF": proc.color(175, 100, 0),
+                    "GPV": proc.color(175)
                 }
         
         // Election data sources are mappings of label name to majority political party

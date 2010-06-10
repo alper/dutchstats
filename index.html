@@ -552,6 +552,11 @@
                 appendToSelects('Gemeenteraadsverkiezingen 2010', 'gr2010');
             });
             
+            $.getJSON('data/TK2010.json', function(data) {
+                datacatalog.addElectionDataSource('tk2010', data);
+                appendToSelects('Tweede Kamerverkiezingen 2010', 'tk2010');
+            });
+            
             $.getJSON('data/TK1994.json', function(data) {
                 datacatalog.addElectionDataSource('tk1994', data);
                 appendToSelects('Tweede Kamerverkiezingen 1994', 'tk1994');
